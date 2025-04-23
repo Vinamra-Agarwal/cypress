@@ -1,4 +1,4 @@
-import type { Config } from 'drizzle-kit';
+import { defineConfig } from 'drizzle-kit';
 import * as dotenv from 'dotenv';
 dotenv.config({path:'.env'});
 
@@ -6,11 +6,11 @@ if(!process.env.DATABASE_URL){
     console.log('Cannot find database url')
 }
 
-export default {
-    schema:'./src/lib/supabase/schema.ts',
-    out: './drizzle',
+export default defineConfig({
+    schema: './src/lib/supabase/schema.ts',
+    out: './migrations',
     dbCredentials: {
-        connectionString: process.env.DATABASE_URL || '',
+      url: process.env.DATABASE_URL!
     },
-    dialect: 'postgresql',
-}
+    dialect: 'postgresql'
+  });
