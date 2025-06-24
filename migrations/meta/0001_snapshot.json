@@ -1,6 +1,6 @@
 {
-  "id": "bc1f9774-4b16-4060-9f7f-156d7105d692",
-  "prevId": "255f0598-7b8d-422c-8998-76e5c353a40c",
+  "id": "8ee01947-12f6-447c-892e-af2d9787050a",
+  "prevId": "e450d0c9-002b-4e56-a2f8-b170f9b08846",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -19,7 +19,8 @@
           "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         },
         "title": {
           "name": "title",
@@ -45,12 +46,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "logo": {
-          "name": "logo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "banner_url": {
           "name": "banner_url",
           "type": "text",
@@ -61,13 +56,13 @@
           "name": "workspace_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "folder_id": {
           "name": "folder_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {},
@@ -120,7 +115,8 @@
           "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         },
         "title": {
           "name": "title",
@@ -146,12 +142,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "logo": {
-          "name": "logo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "banner_url": {
           "name": "banner_url",
           "type": "text",
@@ -162,7 +152,7 @@
           "name": "workspace_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {},
@@ -202,7 +192,8 @@
           "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         },
         "workspace_owner": {
           "name": "workspace_owner",

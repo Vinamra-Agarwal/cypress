@@ -1,5 +1,5 @@
 {
-  "id": "255f0598-7b8d-422c-8998-76e5c353a40c",
+  "id": "e450d0c9-002b-4e56-a2f8-b170f9b08846",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -19,7 +19,8 @@
           "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         },
         "workspace_owner": {
           "name": "workspace_owner",
