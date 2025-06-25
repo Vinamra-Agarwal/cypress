@@ -33,13 +33,15 @@ const LoginPage = () => {
 
   const isLoading = form.formState.isSubmitting;
 
-  const onSubmit: SubmitHandler<z.infer<typeof FormSchema>> = async (
-    formData
-  ) => {
+  const onSubmit = async () => {
+    const formData = form.getValues();
+    console.log('Login form data:', formData);
+    
     const { error } = await actionLoginUser(formData);
     if (error) {
       form.reset();
       setSubmitError(error.message);
+      return; // Add return to prevent redirect on error
     }
     router.replace('/dashboard');
   };

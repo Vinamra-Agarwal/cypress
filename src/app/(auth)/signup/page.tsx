@@ -22,7 +22,6 @@ import Logo from '../../../../public/cypresslogo.svg';
 import Loader from '@/components/global/Loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MailCheck } from 'lucide-react';
-import { FormSchema } from '@/lib/types';
 import { actionSignUpUser } from '@/lib/server-actions/auth-actions';
 
 const SignUpFormSchema = z
@@ -70,7 +69,10 @@ const Signup = () => {
   });
 
   const isLoading = form.formState.isSubmitting;
-  const onSubmit = async ({ email, password }: z.infer<typeof FormSchema>) => {
+  const onSubmit = async () => {
+    const { email, password } = form.getValues();
+    console.log('Using form.getValues():', { email, password });
+    
     const { error } = await actionSignUpUser({ email, password });
     if (error) {
       setSubmitError(error.message);
