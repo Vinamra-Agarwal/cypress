@@ -1,123 +1,114 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function updateSession(request: NextRequest) {
-    // Skip static files and _next/data requests
-    if (
-        request.nextUrl.pathname.startsWith('/_next/static') ||
-        request.nextUrl.pathname.startsWith('/_next/image') ||
-        request.nextUrl.pathname.startsWith('/_next/data') ||
-        request.nextUrl.pathname.includes('.')
-    ) {
-        return NextResponse.next()
-    }
+// Constants for better maintainability
+const PROTECTED_ROUTES = ['/dashboard']
+const AUTH_ROUTES = ['/login', '/signup']
+const PUBLIC_ROUTES = ['/']
+const EMAIL_LINK_ERROR = 'Email link is invalid or has expired'
 
-    let supabaseResponse = NextResponse.next({
-        request,
+// Helper function to check if path starts with any of the given prefixes
+const startsWithAny = (path: string, prefixes: string[]): boolean => 
+  prefixes.some(prefix => path.startsWith(prefix))
+
+// Helper function to create redirect response
+const createRedirect = (request: NextRequest, pathname: string, searchParams?: Record<string, string>) => {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+  
+  if (searchParams) {
+    Object.entries(searchParams).forEach(([key, value]) => {
+      url.searchParams.set(key, value)
     })
+  }
+  
+  return NextResponse.redirect(url)
+}
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll()
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-                    supabaseResponse = NextResponse.next({
-                        request,
-                    })
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
-                    )
-                },
-            },
-        }
-    )
+export async function updateSession(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl
 
-    // Do not run code between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-    // issues with users being randomly logged out.
+  // Early return for static files and Next.js internals
+  if (
+    startsWithAny(pathname, ['/_next/static', '/_next/image', '/_next/data']) ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
+  }
 
-    // IMPORTANT: DO NOT REMOVE auth.getUser()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+  let supabaseResponse = NextResponse.next({ request })
 
-    // Handle email link errors - redirect to signup with error message
-    const emailLinkError = 'Email link is invalid or has expired'
-    if (
-        request.nextUrl.searchParams.get('error_description') === emailLinkError &&
-        request.nextUrl.pathname !== '/signup'
-    ) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/signup'
-        url.searchParams.set('error_description', emailLinkError)
-        return NextResponse.redirect(url)
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
     }
+  )
 
-    // Protect dashboard routes - redirect to login if no user
-    if (request.nextUrl.pathname.startsWith('/dashboard')) {
-        if (!user) {
-            const url = request.nextUrl.clone()
-            url.pathname = '/login'
-            return NextResponse.redirect(url)
-        }
-    }
+  // Get user authentication status
+  // IMPORTANT: DO NOT REMOVE auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-    // Redirect authenticated users away from login/signup pages
-    if (['/login', '/signup'].includes(request.nextUrl.pathname)) {
-        if (user) {
-            const url = request.nextUrl.clone()
-            url.pathname = '/dashboard'
-            return NextResponse.redirect(url)
-        }
-    }
+  // Handle email link errors
+  const errorDescription = searchParams.get('error_description')
+  if (errorDescription === EMAIL_LINK_ERROR && pathname !== '/signup') {
+    return createRedirect(request, '/signup', { error_description: EMAIL_LINK_ERROR })
+  }
 
-    // Original template logic - redirect unauthenticated users to login
-    // (This is more general than the dashboard-specific check above)
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        !request.nextUrl.pathname.startsWith('/signup') &&
-        request.nextUrl.pathname !== '/'  // Allow access to the home page
-    ) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
-    }
+  // Authentication logic
+  const isProtectedRoute = startsWithAny(pathname, PROTECTED_ROUTES)
+  const isAuthRoute = AUTH_ROUTES.includes(pathname)
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
 
-    // IMPORTANT: You *must* return the supabaseResponse object as it is.
-    // If you're creating a new response object with NextResponse.next() make sure to:
-    // 1. Pass the request in it, like so:
-    //    const myNewResponse = NextResponse.next({ request })
-    // 2. Copy over the cookies, like so:
-    //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-    // 3. Change the myNewResponse object to fit your needs, but avoid changing
-    //    the cookies!
-    // 4. Finally:
-    //    return myNewResponse
-    // If this is not done, you may be causing the browser and server to go out
-    // of sync and terminate the user's session prematurely!
+  // Redirect unauthenticated users from protected routes
+  if (isProtectedRoute && !user) {
+    return createRedirect(request, '/login')
+  }
 
-    return supabaseResponse
+  // Redirect authenticated users away from auth pages
+  if (isAuthRoute && user) {
+    return createRedirect(request, '/dashboard')
+  }
+
+  // Global protection: redirect unauthenticated users to login
+  // Allow access to public routes, auth routes, and auth-related paths
+  if (
+    !user && 
+    !isPublicRoute && 
+    !isAuthRoute && 
+    !startsWithAny(pathname, ['/auth'])
+  ) {
+    return createRedirect(request, '/login')
+  }
+
+  return supabaseResponse
 }
 
 export async function middleware(request: NextRequest) {
-    return await updateSession(request)
+  return await updateSession(request)
 }
 
 export const config = {
-    matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
-    ],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - files with extensions
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
+  ],
 }
